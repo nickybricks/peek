@@ -35,50 +35,33 @@
     padding: 32px 24px;
   }
 
-  /* The bear peeks in from one edge, looks around, ducks back out,
-     then reappears somewhere else. Positions are set from JS.
+  /* The bear peeking in from the left edge.
      Spring-like curve: settles without overshoot (damping ~1.0). */
   .bear {
     position: fixed;
+    left: 0;
+    bottom: 0;
     width: min(20vw, 260px);
     z-index: 0;
     pointer-events: none;
     user-select: none;
-    /* hidden until the first peek is scheduled */
-    opacity: 0;
-    transition: transform 620ms cubic-bezier(0.32, 0.72, 0, 1),
-                opacity 320ms ease-out;
+    animation: peek 620ms cubic-bezier(0.32, 0.72, 0, 1) 200ms both;
   }
-
-  /* Each edge: where the bear sits, and which way it faces.
-     --hide is the offset that tucks it out of view behind that edge. */
-  .bear[data-edge="left"]   { left: 0;  bottom: 0; --hide: translate3d(-42%, 0, 0); }
-  .bear[data-edge="right"]  { right: 0; bottom: 0; --hide: translate3d(42%, 0, 0);
-                              transform-origin: right bottom; }
-  /* From below: sits lower, so mostly the head clears the edge */
-  .bear[data-edge="bottom"] { left: 16vw; bottom: 0; --hide: translate3d(0, 58%, 0); }
-  .bear[data-edge="bottom-right"] { right: 16vw; bottom: 0; --hide: translate3d(0, 58%, 0); }
-
-  /* The right-hand edges mirror the artwork so it faces into the page */
-  .bear[data-edge="right"] img,
-  .bear[data-edge="bottom-right"] img { transform: scaleX(-1); }
-
-  .bear img { display: block; width: 100%; }
-
-  .bear.out { transform: var(--hide); opacity: 0; }
-  .bear.in  { transform: translate3d(0, 0, 0); opacity: 1; }
-
-  /* Coming up from below, the bear stays half-submerged: just the head shows */
-  .bear[data-edge="bottom"].in,
-  .bear[data-edge="bottom-right"].in { transform: translate3d(0, 22%, 0); }
+  @keyframes peek {
+    from { transform: translate3d(-38%, 0, 0); opacity: 0; }
+    to   { transform: translate3d(0, 0, 0);    opacity: 1; }
+  }
 
   main {
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 640px;
+    max-width: 880px;
     text-align: center;
   }
+
+  /* Headline and copy stay narrow even though the preview is wide */
+  h1, .sub, .meta { max-width: 640px; margin-left: auto; margin-right: auto; }
 
   /* Large text: tight leading, negative tracking */
   h1 {
@@ -137,42 +120,20 @@
   }
   .meta a:hover { color: var(--ink); border-color: var(--ink); }
 
-  /* Preview: the switcher panel, rebuilt in CSS so it stays crisp */
+  /* Preview: the real switcher, as it looks on screen */
   .preview {
     margin: 44px auto 0;
     width: 100%;
-    max-width: 520px;
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    background: #fff;
-    padding: 16px;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
+    max-width: 860px;
   }
-
-  .win {
-    border-radius: 12px;
-    background: #fff;
-    border: 1px solid var(--line);
-    padding: 8px 8px 9px;
-    text-align: left;
+  .preview img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 14px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.05),
+                0 18px 44px -20px rgba(0,0,0,.22);
   }
-  .win .bar {
-    height: 44px;
-    border-radius: 7px;
-    background: #f5f5f7;
-    margin-bottom: 7px;
-  }
-  .win .label {
-    height: 5px;
-    width: 66%;
-    border-radius: 3px;
-    background: #e8e8ed;
-  }
-  .win.on { border-color: var(--orange); }
-  .win.on .bar { background: #fff3e8; }
-  .win.on .label { background: var(--orange); opacity: .4; }
 
   kbd {
     font: inherit;
@@ -190,15 +151,15 @@
   /* Small screens: keep it one screen, drop the bear */
   @media (max-width: 700px) {
     .bear { display: none; }
-    .preview { grid-template-columns: repeat(2, 1fr); max-width: 320px; margin-top: 34px; }
+    .preview { margin-top: 32px; }
   }
   @media (max-height: 640px) {
     .preview { display: none; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .bear { transition: opacity 300ms ease-out; }
-    .bear.out { transform: none; }        /* fade only, no sliding */
+    .bear { animation: fade 300ms ease-out both; }
+    @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
     .cta { transition: background 140ms ease-out; }
     .cta:active { transform: none; }
   }
@@ -206,9 +167,7 @@
 </head>
 <body>
 
-<div class="bear out" id="bear" data-edge="left" aria-hidden="true">
-  <img src="bear.png" alt="">
-</div>
+<img class="bear" src="bear.png" alt="" aria-hidden="true">
 
 <main>
   <h1>Every window, one&nbsp;tap away.</h1>
@@ -228,64 +187,11 @@
     macOS 14+
   </p>
 
-  <div class="preview" aria-hidden="true">
-    <div class="win"><div class="bar"></div><div class="label"></div></div>
-    <div class="win on"><div class="bar"></div><div class="label"></div></div>
-    <div class="win"><div class="bar"></div><div class="label"></div></div>
-    <div class="win"><div class="bar"></div><div class="label"></div></div>
+  <div class="preview">
+    <img src="switcher.jpg" alt="Peek showing every open window in a grid, one of them selected"
+         width="1700" height="359">
   </div>
 </main>
-
-<script>
-(() => {
-  const bear = document.getElementById('bear');
-  const edges = ['left', 'right', 'bottom', 'bottom-right'];
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-
-  const wait = ms => new Promise(r => setTimeout(r, ms));
-  const rand = (min, max) => min + Math.random() * (max - min);
-
-  // Never show the same edge twice in a row
-  let last = -1;
-  function nextEdge() {
-    let i;
-    do { i = Math.floor(Math.random() * edges.length); } while (i === last && edges.length > 1);
-    last = i;
-    return edges[i];
-  }
-
-  async function loop() {
-    // Reduced motion: show the bear once, at rest, and stop.
-    if (reduced.matches) {
-      bear.dataset.edge = 'left';
-      bear.classList.replace('out', 'in');
-      return;
-    }
-
-    while (true) {
-      bear.dataset.edge = nextEdge();
-      // let the new edge's position apply before sliding in
-      await wait(60);
-
-      bear.classList.replace('out', 'in');   // peek in
-      await wait(rand(1900, 3200));          // look around
-
-      bear.classList.replace('in', 'out');   // duck back out
-      await wait(rand(900, 1800));           // stay hidden
-    }
-  }
-
-  // Start once the artwork is ready, so the first peek isn't a blank slide
-  const img = bear.querySelector('img');
-  if (img.complete) setTimeout(loop, 400);
-  else img.addEventListener('load', () => setTimeout(loop, 400), { once: true });
-
-  // Pause while the tab is in the background
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) bear.classList.replace('in', 'out');
-  });
-})();
-</script>
 
 </body>
 </html>
