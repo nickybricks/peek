@@ -56,12 +56,12 @@
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 700px;
+    max-width: 1260px;
     text-align: center;
   }
 
   /* Headline and copy stay narrow even though the preview is wide */
-  h1, .sub, .meta { max-width: 640px; margin-left: auto; margin-right: auto; }
+  h1, .sub, .meta { max-width: 660px; }
 
   /* Large text: tight leading, negative tracking */
   h1 {
@@ -69,7 +69,7 @@
     line-height: 1.05;
     letter-spacing: -0.028em;
     font-weight: 600;
-    margin: 0 0 16px;
+    margin: 0 auto 16px;
   }
 
   /* Body: leading loosens as size drops, tracking near zero */
@@ -120,11 +120,13 @@
   }
   .meta a:hover { color: var(--ink); border-color: var(--ink); }
 
-  /* Preview: the real switcher, as it looks on screen */
+  /* Preview: the real switcher, as it looks on screen.
+     Width is capped by the viewport height too (the image is 16:9-ish),
+     so it grows on tall screens but never runs off the bottom. */
   .preview {
     margin: 36px auto 0;
     width: 100%;
-    max-width: 620px;
+    max-width: min(1260px, 84vh);  /* Apple's wide content width */
   }
   .preview img {
     display: block;
