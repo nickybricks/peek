@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Peek — a minimal macOS window switcher</title>
+<meta name="description" content="Cmd-Tab shows every open window, not just apps. A tiny macOS window switcher with no settings.">
+<meta property="og:title" content="Peek — a minimal macOS window switcher">
+<meta property="og:description" content="Cmd-Tab shows every open window, not just apps.">
+<meta property="og:type" content="website">
+<link rel="icon" href="peek-logo.png">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  :root {
+    --ink: #1d1d1f;          /* Apple's near-black, not pure black */
+    --muted: #86868b;
+    --line: #e8e8ed;
+    --orange: #ef7c22;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    overflow: hidden;          /* one screen, no scrolling */
+    background: #fff;
+  }
+
+  body {
+    color: var(--ink);
+    font: 400 17px/1.47 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    display: grid;
+    place-items: center;
+    padding: 32px 24px;
+  }
+
+  /* The bear peeking in from the left edge.
+     Spring-like curve: settles without overshoot (damping ~1.0, response ~0.5s). */
+  .bear {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: min(20vw, 260px);
+    z-index: 0;
+    pointer-events: none;
+    user-select: none;
+    animation: peek 620ms cubic-bezier(0.32, 0.72, 0, 1) 200ms both;
+  }
+  @keyframes peek {
+    from { transform: translate3d(-38%, 0, 0); opacity: 0; }
+    to   { transform: translate3d(0, 0, 0);    opacity: 1; }
+  }
+
+  main {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 640px;
+    text-align: center;
+  }
+
+  /* Large text: tight leading, negative tracking */
+  h1 {
+    font-size: clamp(40px, 6.6vw, 64px);
+    line-height: 1.05;
+    letter-spacing: -0.028em;
+    font-weight: 600;
+    margin: 0 0 16px;
+  }
+
+  /* Body: leading loosens as size drops, tracking near zero */
+  .sub {
+    font-size: clamp(17px, 2vw, 20px);
+    line-height: 1.5;
+    letter-spacing: -0.008em;
+    color: var(--muted);
+    margin: 0 auto 32px;
+    max-width: 33em;
+  }
+  .sub b { color: var(--ink); font-weight: 600; }
+
+  .cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    background: var(--ink);
+    color: #fff;
+    text-decoration: none;
+    font-size: 17px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    padding: 14px 28px;
+    border-radius: 980px;              /* Apple's fully-rounded button */
+    transition: transform 140ms cubic-bezier(0.32, 0.72, 0, 1),
+                background 140ms ease-out;
+  }
+  .cta:hover { background: #000; }
+  .cta:active { transform: scale(0.97); }   /* feedback on press, not release */
+  .cta:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.35);
+  }
+
+  .meta {
+    margin: 14px 0 0;
+    font-size: 14px;
+    letter-spacing: 0.004em;           /* small text: slightly positive tracking */
+    color: var(--muted);
+  }
+  .meta a {
+    color: var(--muted);
+    text-decoration: none;
+    border-bottom: 1px solid #d8d8dd;
+    padding-bottom: 1px;
+    transition: color 140ms ease-out, border-color 140ms ease-out;
+  }
+  .meta a:hover { color: var(--ink); border-color: var(--ink); }
+
+  /* Preview: the switcher panel, rebuilt in CSS so it stays crisp */
+  .preview {
+    margin: 44px auto 0;
+    width: 100%;
+    max-width: 520px;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: #fff;
+    padding: 16px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+
+  .win {
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid var(--line);
+    padding: 8px 8px 9px;
+    text-align: left;
+  }
+  .win .bar {
+    height: 44px;
+    border-radius: 7px;
+    background: #f5f5f7;
+    margin-bottom: 7px;
+  }
+  .win .label {
+    height: 5px;
+    width: 66%;
+    border-radius: 3px;
+    background: #e8e8ed;
+  }
+  .win.on { border-color: var(--orange); }
+  .win.on .bar { background: #fff3e8; }
+  .win.on .label { background: var(--orange); opacity: .4; }
+
+  kbd {
+    font: inherit;
+    font-size: .82em;
+    font-weight: 500;
+    letter-spacing: 0;
+    background: #f5f5f7;
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 2px 8px;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  /* Small screens: keep it one screen, drop the bear */
+  @media (max-width: 700px) {
+    .bear { display: none; }
+    .preview { grid-template-columns: repeat(2, 1fr); max-width: 320px; margin-top: 34px; }
+  }
+  @media (max-height: 640px) {
+    .preview { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bear { animation: fade 300ms ease-out both; }
+    @keyframes fade { from { opacity: 0 } to { opacity: 1 } }
+    .cta { transition: background 140ms ease-out; }
+    .cta:active { transform: none; }
+  }
+</style>
+</head>
+<body>
+
+<img class="bear" src="bear.png" alt="" aria-hidden="true">
+
+<main>
+  <h1>Every window, one&nbsp;tap away.</h1>
+
+  <p class="sub">
+    macOS switches between <b>apps</b>. Peek switches between <b>windows</b> —
+    all of them, across every desktop. Press <kbd>⌘ Tab</kbd> and pick.
+  </p>
+
+  <a class="cta" href="https://github.com/nickybricks/peek/releases/latest/download/Peek.zip">
+    Download for macOS
+  </a>
+
+  <p class="meta">
+    Free and open source ·
+    <a href="https://github.com/nickybricks/peek">GitHub</a> ·
+    macOS 14+
+  </p>
+
+  <div class="preview" aria-hidden="true">
+    <div class="win"><div class="bar"></div><div class="label"></div></div>
+    <div class="win on"><div class="bar"></div><div class="label"></div></div>
+    <div class="win"><div class="bar"></div><div class="label"></div></div>
+    <div class="win"><div class="bar"></div><div class="label"></div></div>
+  </div>
+</main>
+
+</body>
+</html>
