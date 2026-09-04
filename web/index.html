@@ -148,12 +148,13 @@
     white-space: nowrap;
   }
 
-  /* Small screens: keep it one screen, drop the bear */
+  /* Small screens: the bear stays, just smaller */
   @media (max-width: 700px) {
-    .bear { display: none; }
-    .preview { margin-top: 32px; }
+    .bear { width: 30vw; max-width: 130px; }
+    .preview { margin-top: 30px; }
   }
-  @media (max-height: 640px) {
+  /* Very short screens: the preview goes, the bear stays */
+  @media (max-height: 620px) {
     .preview { display: none; }
   }
 
