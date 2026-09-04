@@ -10,9 +10,10 @@ swift build -c release
 
 APP="build/Peek.app"
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Peek "$APP/Contents/MacOS/Peek"
 cp Info.plist "$APP/Contents/Info.plist"
+cp Peek.icns "$APP/Contents/Resources/Peek.icns"
 
 # A stable signature keeps the granted permissions (Accessibility, Screen Recording)
 # valid across rebuilds. Falls back to ad-hoc signing when no certificate is available —

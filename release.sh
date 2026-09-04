@@ -19,9 +19,10 @@ ZIP="build/Peek.zip"
 
 swift build -c release
 rm -rf "$APP" "$ZIP"
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Peek "$APP/Contents/MacOS/Peek"
 cp Info.plist "$APP/Contents/Info.plist"
+cp Peek.icns "$APP/Contents/Resources/Peek.icns"
 codesign --force --options runtime --timestamp --sign "$SIGN_IDENTITY" "$APP"
 ditto -c -k --keepParent "$APP" "$ZIP"
 
