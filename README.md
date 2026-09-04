@@ -55,9 +55,7 @@ Requires macOS 14 or later.
 **Download:** grab `Peek.zip` from the [latest release](https://github.com/nickybricks/peek/releases/latest),
 unzip it, and drag `Peek.app` into your Applications folder. Double-click to start.
 
-> The released build isn't notarized by Apple yet, so on first launch macOS will say the
-> developer "cannot be verified". Right-click the app → **Open** → **Open** to get past it,
-> once.
+The download is signed and notarized by Apple, so it opens without a security warning.
 
 **Or build it yourself** (needs Xcode command line tools):
 
