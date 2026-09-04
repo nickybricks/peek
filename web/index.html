@@ -32,7 +32,7 @@
     -webkit-font-smoothing: antialiased;
     display: grid;
     place-items: center;
-    padding: 32px 24px;
+    padding: 24px 24px;
   }
 
   /* The bear peeking in from the left edge.
@@ -65,7 +65,7 @@
 
   /* Large text: tight leading, negative tracking */
   h1 {
-    font-size: clamp(40px, 6.6vw, 64px);
+    font-size: clamp(38px, 5.2vw, 56px);
     line-height: 1.05;
     letter-spacing: -0.028em;
     font-weight: 600;
@@ -78,7 +78,7 @@
     line-height: 1.5;
     letter-spacing: -0.008em;
     color: var(--muted);
-    margin: 0 auto 32px;
+    margin: 0 auto 26px;
     max-width: 33em;
   }
   .sub b { color: var(--ink); font-weight: 600; }
@@ -123,10 +123,12 @@
   /* Preview: the real switcher, as it looks on screen.
      Width is capped by the viewport height too (the image is 16:9-ish),
      so it grows on tall screens but never runs off the bottom. */
+  /* Full width on roomy screens; the height cap only kicks in
+     on shorter ones, so the screenshot never runs off the bottom. */
   .preview {
-    margin: 36px auto 0;
+    margin: 32px auto 0;
     width: 100%;
-    max-width: min(1260px, 84vh);  /* Apple's wide content width */
+    max-width: min(1260px, 108vh);  /* Apple's wide content width */
   }
   .preview img {
     display: block;
@@ -155,8 +157,16 @@
     .bear { width: 30vw; max-width: 130px; }
     .preview { margin-top: 30px; }
   }
+  /* Shorter screens: tighten the header so the screenshot keeps its size */
+  @media (max-height: 1000px) {
+    h1 { font-size: clamp(34px, 4vw, 44px); margin-bottom: 12px; }
+    .sub { font-size: 16px; margin-bottom: 20px; }
+    .cta { padding: 12px 24px; font-size: 16px; }
+    .meta { margin-top: 10px; font-size: 13px; }
+    .preview { margin-top: 24px; }
+  }
   /* Very short screens: the preview goes, the bear stays */
-  @media (max-height: 620px) {
+  @media (max-height: 560px) {
     .preview { display: none; }
   }
 
