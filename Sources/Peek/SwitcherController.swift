@@ -178,6 +178,14 @@ final class SwitcherController {
         bumpMRU(windows[0].id)
         windows = sortedByMRU(windows)
 
+        // Letztes bekanntes Bild SOFORT setzen, damit das Raster gefüllt aufgeht statt sich
+        // sichtbar Kachel für Kachel zu füllen. Die frische Aufnahme unten ersetzt es, sobald
+        // sie da ist (Nick, 2026-09-05: "lädt er bei jedem mal wieder alle fenster durch").
+        WindowManager.pruneThumbnailCache(keeping: windows.map(\.id))
+        for i in windows.indices {
+            windows[i].thumbnail = WindowManager.cachedThumbnail(for: windows[i].id)
+        }
+
         self.mode = mode
         isActive = true
         sessionID += 1

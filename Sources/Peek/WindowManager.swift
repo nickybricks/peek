@@ -104,26 +104,87 @@ enum WindowManager {
         return false
     }
 
+    /// Last known thumbnail per window, kept ACROSS switcher sessions. Without it every
+    /// Cmd-Tab started from nothing and the grid visibly filled in one window at a time —
+    /// a fresh SCShareableContent query plus one screenshot per window, sequentially.
+    ///
+    /// Entries live until the window disappears; a stale picture for a moment is the whole
+    /// point (it is replaced as soon as the fresh capture lands), while an empty tile is the
+    /// thing that reads as "loading".
+    /// Hinter einem Lock statt `@MainActor`: geschrieben wird aus dem Capture-`Task`,
+    /// gelesen synchron in `begin()` — und `SwitcherController` ist nicht MainActor-isoliert,
+    /// eine Isolation hier hätte also den Aufrufer mitgerissen. Der Lock hält die Zugriffe
+    /// zusammen, ohne den Rest des Projekts umzubauen.
+    private static let cacheLock = NSLock()
+    nonisolated(unsafe) private static var thumbnailCache: [CGWindowID: CGImage] = [:]
+
+    /// Cached thumbnail for a window, if one was ever captured.
+    static func cachedThumbnail(for id: CGWindowID) -> CGImage? {
+        cacheLock.lock(); defer { cacheLock.unlock() }
+        return thumbnailCache[id]
+    }
+
+    private static func storeThumbnail(_ image: CGImage, for id: CGWindowID) {
+        cacheLock.lock(); defer { cacheLock.unlock() }
+        thumbnailCache[id] = image
+    }
+
+    /// Drops cache entries for windows that no longer exist, so the dictionary cannot grow
+    /// without bound over a long uptime. Called with the current window list on each open.
+    static func pruneThumbnailCache(keeping ids: [CGWindowID]) {
+        let alive = Set(ids)
+        cacheLock.lock(); defer { cacheLock.unlock() }
+        thumbnailCache = thumbnailCache.filter { alive.contains($0.key) }
+    }
+
     /// Captures thumbnails asynchronously via ScreenCaptureKit, reporting each one on the main thread.
+    ///
+    /// Captures run CONCURRENTLY (bounded), not one after another: the sequential loop made the
+    /// last window of a fifteen-window list wait for the fourteen before it. The bound keeps a
+    /// large window count from firing fifteen simultaneous captures at the compositor.
     static func captureThumbnails(for windows: [WindowInfo], update: @escaping (CGWindowID, CGImage) -> Void) {
         let ids = windows.map(\.id)
         Task {
             guard let content = try? await SCShareableContent.excludingDesktopWindows(true, onScreenWindowsOnly: false) else {
                 return
             }
-            for id in ids {
-                guard let scWindow = content.windows.first(where: { $0.windowID == id }) else { continue }
-                let scale = min(1.0, 720.0 / max(scWindow.frame.width, 1))
-                let config = SCStreamConfiguration()
-                config.width = max(1, Int(scWindow.frame.width * scale))
-                config.height = max(1, Int(scWindow.frame.height * scale))
-                config.showsCursor = false
-                let filter = SCContentFilter(desktopIndependentWindow: scWindow)
-                guard let image = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config) else {
-                    continue
+            let targets = ids.compactMap { id in content.windows.first(where: { $0.windowID == id }) }
+            await withTaskGroup(of: (CGWindowID, CGImage)?.self) { group in
+                var running = 0
+                var iterator = targets.makeIterator()
+                let maxConcurrent = 4
+
+                func addNext() -> Bool {
+                    guard let scWindow = iterator.next() else { return false }
+                    group.addTask { await capture(scWindow) }
+                    return true
                 }
-                await MainActor.run { update(id, image) }
+                while running < maxConcurrent, addNext() { running += 1 }
+
+                for await result in group {
+                    if let (id, image) = result {
+                        storeThumbnail(image, for: id)
+                        await MainActor.run { update(id, image) }
+                    }
+                    _ = addNext()
+                }
             }
         }
+    }
+
+    /// One window's screenshot, scaled down to thumbnail size. nil when the capture fails
+    /// (window closed mid-flight, permission revoked) — the caller then keeps whatever the
+    /// cache already holds.
+    private static func capture(_ scWindow: SCWindow) async -> (CGWindowID, CGImage)? {
+        let scale = min(1.0, 720.0 / max(scWindow.frame.width, 1))
+        let config = SCStreamConfiguration()
+        config.width = max(1, Int(scWindow.frame.width * scale))
+        config.height = max(1, Int(scWindow.frame.height * scale))
+        config.showsCursor = false
+        let filter = SCContentFilter(desktopIndependentWindow: scWindow)
+        guard let image = try? await SCScreenshotManager.captureImage(contentFilter: filter, configuration: config) else {
+            return nil
+        }
+        return (scWindow.windowID, image)
     }
 }
